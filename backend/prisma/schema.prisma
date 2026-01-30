@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  spotify_id     String   @unique
+  playlistId     String
+  genres         String
+  name           String
+  ignoredArtists Artist[] @relation("IgnoredArtists", name: "ignoredBy")
+  createdAt      DateTime @default(now())
+}
+
+model Artist {
+  id          Int      @id @default(autoincrement())
+  spotifyId   String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  ignoredBy   User     @relation("ignoredBy", fields: [ignoredById], references: [id], name: "IgnoredArtists")
+  ignoredById Int
+}
