@@ -10,7 +10,7 @@ newAxios.interceptors.request.use(async (config) => {
 
 newAxios.interceptors.response.use(null, async (error) => {
     if (error.response && error.response.status === 401) {
-        const token = await axios.get(process.env.NEXT_PUBLIC_API_URL+"/token",{withCredentials:true}).then(response=>{
+        const token = await axios.get(process.env.NEXT_PUBLIC_API_URL+"/user/token",{withCredentials:true}).then(response=>{
             return response.data.access_token
         })
         localStorage.setItem("access_token",token)
@@ -36,7 +36,7 @@ spotifyAxios.interceptors.request.use(async (config) => {
 
 spotifyAxios.interceptors.response.use(null, async (error) => {
     if (error.response && error.response.status === 401) {
-        const token = await axios.get(process.env.NEXT_PUBLIC_API_URL+"/token",{withCredentials:true}).then(response=>{
+        const token = await axios.get(process.env.NEXT_PUBLIC_API_URL+"/user/token",{withCredentials:true}).then(response=>{
             return response.data.access_token
         })
         localStorage.setItem("access_token",token)

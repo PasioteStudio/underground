@@ -1,9 +1,13 @@
 import axios from "axios"
 import {spotifyAxios} from "./axios"
-import { Track } from "@/hooks/useProfile"
+import { Artist, Playlist, Track } from "@/context/Profile"
 
-function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[]){
-    let theTrackAlreadyIncluded = false
+function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artistsToIgnore:Artist[]){
+    //is the artist banned
+    for(let i =0;i<artistsToIgnore.length;i++){
+        if(track.artists[0].id == artistsToIgnore[i].id) return false
+    }
+    //the Track already Included
     for(let i =0;i<items.length;i++){
         if((items[i].artists[0].name == track.artists[0].name &&
             items[i].name == track.name) ||
@@ -12,11 +16,10 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[]){
             (items[i].artists[0].name == track.artists[0].name &&
             track.name.includes(items[i].name))
         ) {
-            theTrackAlreadyIncluded = true
-            break;
+            return false
         }
     }
-    let theTrackWannaBeIncluded = false
+    //the Track already Wants Be Included
     for(let i =0;i<to_be_added.length;i++){
         if((to_be_added[i].artists[0].name == track.artists[0].name &&
             to_be_added[i].name == track.name) ||
@@ -25,15 +28,14 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[]){
             (to_be_added[i].artists[0].name == track.artists[0].name &&
             track.name.includes(to_be_added[i].name))
         ) {
-            theTrackAlreadyIncluded = true
-            break;
+            return false
         }
     }
 
-    return track.popularity == 0 && !theTrackAlreadyIncluded && !theTrackWannaBeIncluded
+    return track.popularity == 0
 }
 
-async function addUnderground(genres:string[],playlist_id:string){
+async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string){
     const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1").then(response=>response.data[0])
     const items = await spotifyAxios.get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks?fields=items%28track%28id%2Cname%2Cartists%28name%29%29%29&limit=50&offset=0`).then(response=>{
         return response.data.items.map((item:{track:Track})=>{
@@ -46,7 +48,7 @@ async function addUnderground(genres:string[],playlist_id:string){
             for(let x = 0;x<response.data.tracks.items.length;x++){
                 const item = response.data.tracks.items[x];
                 await spotifyAxios.get(`https://api.spotify.com/v1/tracks/${item.id}`).then(async (res)=>{
-                    if(doesTheTrackWorthIt(res.data,items,to_be_added)) to_be_added.push({id:res.data.uri,name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
+                    if(doesTheTrackWorthIt(res.data,items,to_be_added,artistsToIgnore)) to_be_added.push({id:res.data.id,uri:res.data.uri, name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
                 })
             }
         })
@@ -54,8 +56,8 @@ async function addUnderground(genres:string[],playlist_id:string){
     if(to_be_added.length == 0){
         return "No new tracks to add";
     }else if(to_be_added.length > 100){
-        const first_batch = to_be_added.slice(0,100).map(item=>item.id);
-        const second_batch = to_be_added.slice(100).map(item=>item.id);
+        const first_batch = to_be_added.slice(0,100).map(item=>item.uri);
+        const second_batch = to_be_added.slice(100).map(item=>item.uri);
         await spotifyAxios.post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`,{
             uris: first_batch,
         })
@@ -64,10 +66,24 @@ async function addUnderground(genres:string[],playlist_id:string){
         })
     }else{
         await spotifyAxios.post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`,{
-            uris: to_be_added.map(item=>item.id),
+            uris: to_be_added.map(item=>item.uri),
         })
     }
     return "Tracks added"
     
 }
-export {addUnderground}
+
+async function removeBANNED(playlist:Playlist,artistsToIgnore:Artist[]) {
+    const tracksToRemove = []
+    for(let i =0;i<playlist.items.length;i++){
+        if(artistsToIgnore.map(artist=>artist.id).includes(playlist.items[i].artists[0].id))tracksToRemove.push(playlist.items[i].uri)
+    }
+
+    await spotifyAxios.delete(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
+        data: {
+            tracks: tracksToRemove.map(uri => ({ uri }))
+        }
+    })
+    return "Tracks deleted!"
+}
+export {addUnderground,removeBANNED}
