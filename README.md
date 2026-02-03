@@ -2,8 +2,15 @@
 
 A Spotify API to add truly underground music
 
-# ENDPOINTS
+## Website
 
-/login to log in your Spotify account
-/callback (where you'll be redirected to when logged in)
-/play add 0 popularity, genre specified tracks to your custom playlist
+https://spotify.pasiotestudio.hu
+
+## Endpoints
+
+- `/login` - Log in your Spotify account
+- `/logout` - Delete tokens
+- `/callback` - Redirect destination after login
+- `/user` - Get the user's info
+- `/user/token` - Get the access token
+- `/test` - Test endpoint
