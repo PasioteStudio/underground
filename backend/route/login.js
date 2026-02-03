@@ -29,50 +29,64 @@ const base64encode = (input) => {
 
 authRouter.get("/login",async(req,res)=>{
     const codeVerifier = generateRandomString(128);
-    myCache.set("code_verifier"+req.ip, codeVerifier, 120);
     const hashed = await sha256(codeVerifier)
     const codeChallenge = base64encode(hashed);
     const scope = 'user-read-private playlist-read-private playlist-modify-public playlist-modify-private playlist-read-collaborative user-library-read';
-    res.redirect('https://accounts.spotify.com/authorize?' +
-        new URLSearchParams({
-            response_type: 'code',
-            client_id: process.env.Client_ID,
-            scope: scope,
-            redirect_uri: process.env.REDIRECT_URI,
-            code_challenge_method: 'S256',
-            code_challenge: codeChallenge,
-        }).toString()
+    const state = generateRandomString(32);
+    myCache.set("code_verifier" + state, codeVerifier, 300);
+    res.cookie('state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV == "production",
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 5 * 60 * 1000,
+    });
+    res.redirect(process.env.FRONTEND_URL + "/redirect?" +
+      new URLSearchParams({
+          URL:"https://accounts.spotify.com/authorize?",
+          response_type: 'code',
+          client_id: process.env.Client_ID,
+          scope: scope,
+          redirect_uri: process.env.REDIRECT_URI,
+          code_challenge_method: 'S256',
+          code_challenge: codeChallenge,
+      }).toString()
     );
 })
 authRouter.get("/callback",async(req,res)=>{
     const code = req.query.code || null;
+    const state = req.cookies.state || null;
+    const codeVerifier = myCache.get("code_verifier"+state);
+    if(!code || !codeVerifier || typeof code !== 'string' || !/^[A-Za-z0-9\-_]{10,500}$/.test(code)){
+      res.status(400).json({ error: 'Invalid code provided' });
+      return
+    }
 
-    axios.post("https://accounts.spotify.com/api/token", {
-        code_verifier: myCache.get("code_verifier"+req.ip),
-        client_id: process.env.Client_ID,
-        code: code,
-        redirect_uri: process.env.REDIRECT_URI,
-        grant_type: 'authorization_code'
-      }, {
-        headers: {
-            'content-type': 'application/x-www-form-urlencoded',
-        }
-      })
-    .then(async (response) => {
-        const access_token = response.data.access_token,
+    try {
+      const params = new URLSearchParams();
+      params.append('grant_type', 'authorization_code');
+      params.append('code', code);
+      params.append('redirect_uri', process.env.REDIRECT_URI);
+      params.append('code_verifier', codeVerifier);
+      params.append('client_id', process.env.Client_ID);
+
+      const headers = { 'content-type': 'application/x-www-form-urlencoded' };
+      headers['Authorization'] = 'Basic ' + Buffer.from(process.env.Client_ID + ':' + process.env.Client_Secret).toString('base64');
+
+      const response = await axios.post("https://accounts.spotify.com/api/token", params.toString(), { headers });
+      const access_token = response.data.access_token,
             refresh_token = response.data.refresh_token;
-        myCache.del("code_verifier"+req.ip)
-        await saveOrUpdateUser({res,access_token, refresh_token,expires_in:response.data.expires_in});
-    })
-    .catch(error => {
-        console.error("Error fetching tokens 2:", error.data ? error.data : error.message);
-        myCache.del("code_verifier"+req.ip)
-        res.redirect('/#' +
-            new URLSearchParams({
-                error: 'token_fetch_failed'
-            }).toString()
-        );
-    });
+      myCache.del("code_verifier"+state)
+      await saveOrUpdateUser({res,access_token, refresh_token,expires_in:response.data.expires_in});
+    } catch (error) {
+      console.error("Error fetching tokens (authorization_code):", error.response ? error.response.status : '', error.response ? error.response.data : error.message);
+      myCache.del("code_verifier"+state)
+      res.redirect('/#' +
+          new URLSearchParams({
+              error: 'token_fetch_failed'
+          }).toString()
+      );
+    };
 })
 
 async function saveOrUpdateUser({res,access_token, refresh_token,expires_in}) {

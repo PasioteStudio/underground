@@ -9,11 +9,13 @@ const AddTracks: React.FC = () => {
     const handleUnderground = async() => {
         if(!profile || title == "WAIT...") return;
         setTitle("WAIT...")
-        await addUnderground(profile.ignoredArtists,profile.genres,profile.playlist.id)
-        update()
+        const response = await addUnderground(profile.ignoredArtists,profile.genres,profile.playlist.id)
+        if(response.code == 200){
+            update()
+        }
         setTitle("DONE!")
         setTimeout(()=>{
-        setTitle("ADD UNDERGROUND TRACKS")
+            if(title != "WAIT...")setTitle("ADD UNDERGROUND TRACKS")
         },5000)
     }
     return <button onClick={handleUnderground} className="mx-auto cursor-cell rounded-4xl bg-green-700 text-3xl px-5 py-2" >{title}</button>

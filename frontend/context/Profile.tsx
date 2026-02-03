@@ -39,18 +39,22 @@ type ProfileContextType = {
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined)
 
 export function useProfile(){
-    const [profile,setProfile] = useState<Profile>()
+    const [profile,setProfile] = useState<Profile | null>()
 
     useEffect(()=>{
         newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user").then(response=>{
             response.data.genres = response.data.genres.split(",")
             setProfile(response.data)
+        }).catch(err=>{
+            setProfile(null)
         })
     },[])
     const update = () => {
         newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user").then(response=>{
             response.data.genres = response.data.genres.split(",")
             setProfile(response.data)
+        }).catch(err=>{
+            setProfile(null)
         })
     }
     return {profile,setProfile,update}

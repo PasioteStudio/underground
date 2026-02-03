@@ -13,7 +13,7 @@ const Genres: React.FC = () => {
         const formData = new FormData(e.currentTarget)
         const genres = formData.get("genres") as string
         await newAxios.patch(process.env.NEXT_PUBLIC_API_URL + "/user/genres",{
-        genres:genres.split(", ")
+            genres:genres.split(", ")
         })
         update()
         setTitleGenres("SAVE")
@@ -21,7 +21,7 @@ const Genres: React.FC = () => {
 
     return profile ? (
     <div className="border rounded-3xl w-full px-5 py-2">
-        <div className="bg-gray-800 rounded-2xl px-3 py-1 cursor-pointer items-center flex justify-between">
+        <div className="bg-gray-800 rounded-2xl px-3 py-1 items-center flex justify-between">
             <h2 className="select-none text-4xl"><strong>GENRES</strong></h2>
         </div>
         <div>

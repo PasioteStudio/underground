@@ -165,7 +165,7 @@ userRouter.get("/",async(req,res)=>{
   }))
   
   const requestedUser = {name:user.display_name, ignoredArtists:bannedArtists, playlist:{id:playlist.id,name:playlist.name,items:Newitems}, id:req.user.spotify_id,genres:userDB.genres}
-  myCache.set("user_"+req.user.id,requestedUser,15)
+  myCache.set("user_"+req.user.id,requestedUser,5)
   res.json(requestedUser)
 })
 userRouter.use("/token",getToken);

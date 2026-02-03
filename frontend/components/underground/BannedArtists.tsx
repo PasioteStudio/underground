@@ -13,16 +13,26 @@ const BannedArtists: React.FC = () => {
         const unban = profile.ignoredArtists.map(artist=>{
           return "UNBAN ARTIST"
         })
-        setTitlesUnBanArtist(unban)
+        setTitlesUnBanArtist((prev:string[])=>{
+            let isWaiting = false;
+            for(let i =0;i<prev.length;i++){
+                if(prev[i] == "WAIT...") isWaiting = true
+            }
+            if(isWaiting){
+                return prev
+            }else{
+                return unban
+            }
+        })
       },[profile])
 
     const handleUnBan = async(artist:Artist) => {
         if(!profile) return
         const id = profile.ignoredArtists.findIndex((item)=>{
-        return item.id == artist.id
+            return item.id == artist.id
         })
         if(titlesUnBanArtist[id] == "WAIT..."){
-        return
+            return
         }
         titlesUnBanArtist[id] = "WAIT..."
         setTitlesUnBanArtist(JSON.parse(JSON.stringify(titlesUnBanArtist)))

@@ -35,7 +35,7 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
     return track.popularity == 0
 }
 
-async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string){
+async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string):Promise<{code:number,message:string}>{
     const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1").then(response=>response.data[0])
     const items = await spotifyAxios.get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks?fields=items%28track%28id%2Cname%2Cartists%28name%29%29%29&limit=50&offset=0`).then(response=>{
         return response.data.items.map((item:{track:Track})=>{
@@ -44,7 +44,7 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
     })
     const to_be_added:Track[] = []
     for(let i =0;i<genres.length;i++){
-        await spotifyAxios.get(`https://api.spotify.com/v1/search?q=${word}%20genre%3A${genres[i]}%20tag%3Ahipster&type=track&limit=10&offset=0`).then(async (response) => {
+        await spotifyAxios.get(`https://api.spotify.com/v1/search?q=${word}%20genre%3A${genres[i]}%20tag%3Ahipster&type=track&limit=10&offset=0&market=ES`).then(async (response) => {
             for(let x = 0;x<response.data.tracks.items.length;x++){
                 const item = response.data.tracks.items[x];
                 await spotifyAxios.get(`https://api.spotify.com/v1/tracks/${item.id}`).then(async (res)=>{
@@ -54,7 +54,7 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
         })
     }
     if(to_be_added.length == 0){
-        return "No new tracks to add";
+        return {code:404,message:"No new tracks to add"};
     }else if(to_be_added.length > 100){
         const first_batch = to_be_added.slice(0,100).map(item=>item.uri);
         const second_batch = to_be_added.slice(100).map(item=>item.uri);
@@ -69,11 +69,11 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
             uris: to_be_added.map(item=>item.uri),
         })
     }
-    return "Tracks added"
+    return {code:200, message:"Tracks added"}
     
 }
 
-async function removeBANNED(playlist:Playlist,artistsToIgnore:Artist[]) {
+async function removeBANNED(playlist:Playlist,artistsToIgnore:Artist[]):Promise<{code:number,message:string}> {
     const tracksToRemove = []
     for(let i =0;i<playlist.items.length;i++){
         if(artistsToIgnore.map(artist=>artist.id).includes(playlist.items[i].artists[0].id))tracksToRemove.push(playlist.items[i].uri)
@@ -84,6 +84,6 @@ async function removeBANNED(playlist:Playlist,artistsToIgnore:Artist[]) {
             tracks: tracksToRemove.map(uri => ({ uri }))
         }
     })
-    return "Tracks deleted!"
+    return {code:200, message:"Tracks deleted!"}
 }
 export {addUnderground,removeBANNED}
