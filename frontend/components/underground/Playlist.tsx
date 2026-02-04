@@ -40,6 +40,15 @@ const Playlist: React.FC = () => {
         setTitlesBanArtist(JSON.parse(JSON.stringify(titlesBanArtist)))
         await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user/ban/"+artist.id).then(async(res)=>{
             await removeBANNED(profile.playlist,[...profile.ignoredArtists,artist])
+            for(let i =0;i<profile.playlist.items.length;i++){
+                if(profile.playlist.items[i].artists[0].id == artist.id){
+                    if(titlesBanArtist[i] == "WAIT..."){
+                        titlesBanArtist[i] = "BAN ARTIST"
+                    }
+                    
+                }
+            }
+            setTitlesBanArtist(JSON.parse(JSON.stringify(titlesBanArtist)))
             update()
         }).catch(err=>{
             //error

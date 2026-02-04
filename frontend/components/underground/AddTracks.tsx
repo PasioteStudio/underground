@@ -13,7 +13,7 @@ const AddTracks: React.FC = () => {
         if(response.code == 200){
             update()
         }
-        setTitle("DONE!")
+        setTitle(response.message)
         setTimeout(()=>{
             if(title != "WAIT...")setTitle("ADD UNDERGROUND TRACKS")
         },5000)

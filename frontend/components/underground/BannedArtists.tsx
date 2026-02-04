@@ -36,7 +36,14 @@ const BannedArtists: React.FC = () => {
         }
         titlesUnBanArtist[id] = "WAIT..."
         setTitlesUnBanArtist(JSON.parse(JSON.stringify(titlesUnBanArtist)))
-        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user/unban/"+artist.id)
+        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user/unban/"+artist.id).then(res=>{
+            const id = profile.ignoredArtists.findIndex((item)=>{
+                return item.id == artist.id
+            })
+            if(titlesUnBanArtist[id] == "WAIT..."){
+                titlesUnBanArtist[id] = "UNBAN ARTIST" 
+            }
+        })
         update()
     }
 
