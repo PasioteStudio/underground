@@ -1,8 +1,8 @@
 import axios from "axios"
-import {spotifyAxios} from "./axios"
+import {newAxios, spotifyAxios} from "./axios"
 import { Artist, Playlist, Track } from "@/context/Profile"
 
-function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artistsToIgnore:Artist[]){
+function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artistsToIgnore:Artist[],usedTracks:Track[]){
     //is the artist banned
     for(let i =0;i<artistsToIgnore.length;i++){
         if(track.artists[0].id == artistsToIgnore[i].id) return false
@@ -31,12 +31,25 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
             return false
         }
     }
+    //the Track already Used
+    for(let i =0;i<usedTracks.length;i++){
+        if(usedTracks[i].id == track.id) return false
+    }
 
     return track.popularity == 0
 }
 
-async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string):Promise<{code:number,message:string}>{
-    const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1").then(response=>response.data[0])
+async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string,usedTracks:Track[]):Promise<{code:number,message:string}> {
+    const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1",{timeout:5000}).then(response=>response.data[0]).catch(async (err)=>{
+        const word2 = await axios.get("https://random-words-api.kushcreates.com/api?language=en&words=1",{timeout:5000}).then(response=>{
+            console.log(response.data)
+            return response.data[0].word
+        }).catch(err=>{
+            return {code:401,message:"Error fetching random word"}
+        })
+        if(typeof word2 == "object") return word2
+    })
+    if(typeof word == "object") return word
     const items = await spotifyAxios.get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks?fields=items%28track%28id%2Cname%2Cartists%28name%29%29%29&limit=50&offset=0`).then(response=>{
         return response.data.items.map((item:{track:Track})=>{
             return item.track
@@ -48,7 +61,7 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
             for(let x = 0;x<response.data.tracks.items.length;x++){
                 const item = response.data.tracks.items[x];
                 await spotifyAxios.get(`https://api.spotify.com/v1/tracks/${item.id}`).then(async (res)=>{
-                    if(doesTheTrackWorthIt(res.data,items,to_be_added,artistsToIgnore)) to_be_added.push({id:res.data.id,uri:res.data.uri, name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
+                    if(doesTheTrackWorthIt(res.data,items,to_be_added,artistsToIgnore,usedTracks)) to_be_added.push({id:res.data.id,uri:res.data.uri, name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
                 })
             }
         })
@@ -69,6 +82,9 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
             uris: to_be_added.map(item=>item.uri),
         })
     }
+    await newAxios.post(process.env.NEXT_PUBLIC_API_URL + "/user/usedtracks",{
+        tracks: to_be_added.map(item=>item.id)
+    })
     return {code:200, message:"Tracks added"}
     
 }

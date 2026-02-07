@@ -9,7 +9,7 @@ const AddTracks: React.FC = () => {
     const handleUnderground = async() => {
         if(!profile || title == "WAIT...") return;
         setTitle("WAIT...")
-        const response = await addUnderground(profile.ignoredArtists,profile.genres,profile.playlist.id)
+        const response = await addUnderground(profile.ignoredArtists,profile.genres,profile.playlist.id,profile.usedTracks)
         if(response.code == 200){
             update()
         }

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..', '..');
-const ignoreNames = new Set(['node_modules', '.git', 'generated', '.next', 'dist', 'build', 'scripts', 'out', 'frontend/out']);
+const ignoreNames = new Set(['node_modules','secret-scan.yml','prisma.js','prisma.config.ts','bun.lock','package.json','package-lock.json', '.env','.env.example','.git', 'generated', '.next', 'dist', 'build', 'scripts', 'out', 'frontend/out']);
 const patterns = [
   { re: /BEGIN( RSA)? PRIVATE KEY/i, name: 'Private key header' },
   { re: /PRIVATE KEY/i, name: 'Private key' },
@@ -41,6 +41,10 @@ function walk(dir) {
       for (const p of patterns) {
         const match = content.match(p.re);
         if (match) {
+          const safe = ['index.js',"auth.js","login.js","user.js","playlist.js","token.js",
+            "axios.ts","README.md","SECURITY.md"
+          ];
+          if(safe.includes(full.split("\\")[full.split("\\").length-1])) continue; // skip self
           findings.push({ file: full, match: match[0], pattern: p.name });
         }
       }

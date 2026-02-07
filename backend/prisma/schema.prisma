@@ -21,6 +21,7 @@ model User {
   name          String
   bannedArtists IgnoredArtistsByUser[]
   createdAt     DateTime               @default(now())
+  usedTracks    UsedTracksByUser[]
 }
 
 model Artist {
@@ -29,6 +30,27 @@ model Artist {
   name      String
   ignoredBy IgnoredArtistsByUser[]
   createdAt DateTime               @default(now())
+  tracks    Track[]
+}
+
+model Track {
+  id        Int                @id @default(autoincrement())
+  spotifyId String             @unique
+  name      String
+  used      UsedTracksByUser[]
+  artist    Artist             @relation(fields: [artistId], references: [id])
+  artistId  Int
+  createdAt DateTime           @default(now())
+}
+
+model UsedTracksByUser {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int // relation scalar field (used in the `@relation` attribute above)
+  track      Track    @relation(fields: [trackId], references: [id])
+  trackId    Int // relation scalar field (used in the `@relation` attribute above)
+  assignedAt DateTime @default(now())
+
+  @@id([userId, trackId])
 }
 
 model IgnoredArtistsByUser {
