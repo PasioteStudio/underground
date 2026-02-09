@@ -31,10 +31,6 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
             return false
         }
     }
-    for(let i =0;i<usedTracks.length;i++){
-        if(usedTracks[i].id == track.id) return false
-    }
-
     return track.popularity == 0
 }
 
