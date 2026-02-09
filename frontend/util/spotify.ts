@@ -2,7 +2,7 @@ import axios from "axios"
 import {newAxios, spotifyAxios} from "./axios"
 import { Artist, Playlist, Track } from "@/context/Profile"
 
-function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artistsToIgnore:Artist[],usedTracks:Track[]){
+function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artistsToIgnore:Artist[]){
     //is the artist banned
     for(let i =0;i<artistsToIgnore.length;i++){
         if(track.artists[0].id == artistsToIgnore[i].id) return false
@@ -31,7 +31,6 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
             return false
         }
     }
-    //the Track already Used
     for(let i =0;i<usedTracks.length;i++){
         if(usedTracks[i].id == track.id) return false
     }
@@ -39,7 +38,7 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
     return track.popularity == 0
 }
 
-async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string,usedTracks:Track[]):Promise<{code:number,message:string}> {
+async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string):Promise<{code:number,message:string}> {
     const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1",{timeout:5000}).then(response=>response.data[0]).catch(async (err)=>{
         const word2 = await axios.get("https://random-words-api.kushcreates.com/api?language=en&words=1",{timeout:5000}).then(response=>{
             console.log(response.data)
@@ -61,16 +60,25 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
             for(let x = 0;x<response.data.tracks.items.length;x++){
                 const item = response.data.tracks.items[x];
                 await spotifyAxios.get(`https://api.spotify.com/v1/tracks/${item.id}`).then(async (res)=>{
-                    if(doesTheTrackWorthIt(res.data,items,to_be_added,artistsToIgnore,usedTracks)) to_be_added.push({id:res.data.id,uri:res.data.uri, name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
+                    if(doesTheTrackWorthIt(res.data,items,to_be_added,artistsToIgnore)) to_be_added.push({id:res.data.id,uri:res.data.uri, name:res.data.name,artists:[{id:res.data.artists[0].id,name:res.data.artists[0].name}]})
                 })
             }
         })
     }
     if(to_be_added.length == 0){
         return {code:404,message:"No new tracks to add"};
-    }else if(to_be_added.length > 100){
-        const first_batch = to_be_added.slice(0,100).map(item=>item.uri);
-        const second_batch = to_be_added.slice(100).map(item=>item.uri);
+    }
+    const newListId = await newAxios.post(process.env.NEXT_PUBLIC_API_URL + "/tracks/worth",{
+        tracks: to_be_added.map(item=>item.id)
+    }).then(res=>res.data).catch(err=>{
+        return {code:401,message:"Error checking tracks"}
+    })
+    if(typeof newListId == "object" && newListId.code) return newListId
+    const newList = to_be_added.filter(item=>newListId.includes(item.id))
+    console.log(newList,to_be_added,newListId)
+    if(newList.length > 100){
+        const first_batch = newList.slice(0,100).map((item:Track)=>item);
+        const second_batch = newList.slice(100).map((item:Track)=>item.uri);
         await spotifyAxios.post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`,{
             uris: first_batch,
         })
@@ -79,11 +87,11 @@ async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_
         })
     }else{
         await spotifyAxios.post(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks`,{
-            uris: to_be_added.map(item=>item.uri),
+            uris: newList.map((item:Track)=>item.uri),
         })
     }
-    await newAxios.post(process.env.NEXT_PUBLIC_API_URL + "/user/usedtracks",{
-        tracks: to_be_added.map(item=>item.id)
+    await newAxios.post(process.env.NEXT_PUBLIC_API_URL + "/tracks/usedtracks",{
+        tracks: newList.map((item:Track)=>item.id)
     })
     return {code:200, message:"Tracks added"}
     

@@ -1,37 +1,50 @@
 const { newAxios } = require("../config");
 
-async function getCustomPlaylist(spotifyId,access_token,playlist_Id) {
-    let Playlist;
-    if(playlist_Id){
-        await newAxios.get(`https://api.spotify.com/v1/playlists/${playlist_Id}`,{
-            headers: {
-                Authorization: `Bearer ${access_token}`,
-            }
-        }).then(async(res)=>{
-            if(res.data.description != process.env.PLAYLIST_DESCRIPTION || res.data.name != process.env.PLAYLIST_NAME){
-                await newAxios.put(`https://api.spotify.com/v1/playlists/${playlist_Id}`,{
+async function getCustomPlaylist(spotifyId, access_token, playlist_Id) {
+    try {
+        if (playlist_Id) {
+            const res = await newAxios.get(`https://api.spotify.com/v1/playlists/${playlist_Id}`, {
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+            
+            if (res.data.description !== process.env.PLAYLIST_DESCRIPTION || res.data.name !== process.env.PLAYLIST_NAME) {
+                await newAxios.put(`https://api.spotify.com/v1/playlists/${playlist_Id}`, {
                     name: process.env.PLAYLIST_NAME || "Ultra Underground Mix",
-                    description: process.env.PLAYLIST_DESCRIPTION || "",
+                    description: process.env.PLAYLIST_DESCRIPTION || ""
                 }, {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${access_token}`,
+                        Authorization: `Bearer ${access_token}`
                     }
-                })
-                res.data.name = process.env.PLAYLIST_NAME || "Ultra Underground Mix"
-                res.data.description = process.env.PLAYLIST_DESCRIPTION || ""
-                Playlist = res.data
-            }else{
-                Playlist = res.data
+                });
+                res.data.name = process.env.PLAYLIST_NAME || "Ultra Underground Mix";
+                res.data.description = process.env.PLAYLIST_DESCRIPTION || "";
             }
-        }).catch(async(err)=>{
-            //deleted playlist
-            Playlist = await createCustomPlaylist(spotifyId,access_token)
-        })
-    }else{
-        Playlist = await createCustomPlaylist(spotifyId,access_token)
+            return res.data;
+        }
+    } catch (err) {
+        // deleted playlist
     }
-    return Playlist;
+    
+    return await createCustomPlaylist(spotifyId, access_token);
+}
+
+async function fetchAllTracksInPlaylist(playlistId, token) {
+  const fields = "next%2Citems%28track%28name%2Curi%2Cid%2Cartists%28name%2Cid%29%29%29"
+  let allItems = [];
+  let offset = 0;
+  let hasMore = true;
+  
+  while(hasMore) {
+    const response = await newAxios.get(
+      `https://api.spotify.com/v1/playlists/${playlistId}/tracks?fields=${fields}&limit=50&offset=${offset}`,
+      {headers: {Authorization: `Bearer ${token}`}}
+    )
+    allItems.push(...response.data.items)
+    hasMore = !!response.data.next
+    offset += 50
+  }
+  return allItems
 }
 
 async function createCustomPlaylist(spotifyId,access_token) {
@@ -52,4 +65,4 @@ async function createCustomPlaylist(spotifyId,access_token) {
     return newPlaylist
 }
 
-module.exports = { getCustomPlaylist };
+module.exports = { getCustomPlaylist,fetchAllTracksInPlaylist };

@@ -4,6 +4,7 @@ const cors = require("cors")
 const { authRouter } = require("./route/login");
 const { userRouter } = require("./route/user");
 const { testRouter } = require("./route/test");
+const { tracksRouter } = require("./route/tracks");
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
@@ -38,6 +39,17 @@ app.use('/user/token', authLimiter);
 app.use("/", authRouter);
 app.use("/user",userRouter)
 app.use("/test",testRouter)
+app.use("/tracks",tracksRouter)
+
+// Error handling middleware - must be last and have all 4 parameters (err, req, res, next)
+app.use((err, req, res, next) => {
+  console.error("Error:", err.stack);
+  if (process.env.NODE_ENV === 'production') {
+    res.status(500).json('Internal Server Error' );
+  } else {
+    res.status(500).json({ message: err.message, stack: err.stack.split('\n') });
+  }
+});
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

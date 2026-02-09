@@ -26,7 +26,6 @@ interface Profile{
     id:string,
     name:string,
     ignoredArtists:Artist[],
-    usedTracks:Track[],
     genres:string[],
     playlist:Playlist
 }

@@ -36,7 +36,7 @@ const BannedArtists: React.FC = () => {
         }
         titlesUnBanArtist[id] = "WAIT..."
         setTitlesUnBanArtist(JSON.parse(JSON.stringify(titlesUnBanArtist)))
-        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user/unban/"+artist.id).then(res=>{
+        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/tracks/unban/"+artist.id).then(res=>{
             const id = profile.ignoredArtists.findIndex((item)=>{
                 return item.id == artist.id
             })
@@ -48,8 +48,8 @@ const BannedArtists: React.FC = () => {
     }
 
     return profile ? (
-    <div className="border rounded-3xl w-full px-5 py-2">
-        <div onClick={()=>setOpenedArtists(!openedArtists)} className="bg-gray-800 rounded-2xl px-3 py-1 cursor-pointer items-center flex justify-between">
+    <div className="border rounded-3xl w-full px-5 py-5">
+        <div onClick={()=>setOpenedArtists(!openedArtists)} className={`bg-gray-800 ${openedArtists ? "mb-5" : ""} rounded-2xl px-4 py-2 cursor-pointer items-center flex justify-between`}>
             <h2 className="select-none text-4xl"><strong>BANNED ARTISTS</strong></h2>
             <h2 className="select-none text-4xl">{openedArtists ? "🔺" : "🔻"}</h2>
         </div>

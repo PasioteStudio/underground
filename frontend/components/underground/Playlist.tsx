@@ -38,7 +38,7 @@ const Playlist: React.FC = () => {
             }
         }
         setTitlesBanArtist(JSON.parse(JSON.stringify(titlesBanArtist)))
-        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/user/ban/"+artist.id).then(async(res)=>{
+        await newAxios.get(process.env.NEXT_PUBLIC_API_URL + "/tracks/ban/"+artist.id).then(async(res)=>{
             await removeBANNED(profile.playlist,[...profile.ignoredArtists,artist])
             for(let i =0;i<profile.playlist.items.length;i++){
                 if(profile.playlist.items[i].artists[0].id == artist.id){
@@ -56,8 +56,8 @@ const Playlist: React.FC = () => {
     }
 
     return profile ? (
-    <div className="border rounded-3xl w-full px-5 py-2">
-        <div onClick={()=>setOpenedPlaylist(!openedPlaylist)} className="bg-gray-800 rounded-2xl px-3 py-1 cursor-pointer items-center flex justify-between">
+    <div className="border rounded-3xl w-full px-5 py-5">
+        <div onClick={()=>setOpenedPlaylist(!openedPlaylist)} className={`bg-gray-800 ${openedPlaylist ? "mb-5" : ""}  rounded-2xl px-4 py-2 cursor-pointer items-center flex justify-between`}>
             <h2 className="select-none text-4xl"><strong>TRACKS</strong></h2>
             <h2 className="select-none text-4xl">{openedPlaylist ? "🔺" : "🔻"}</h2>
         </div>

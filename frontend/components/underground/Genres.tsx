@@ -20,13 +20,13 @@ const Genres: React.FC = () => {
     }
 
     return profile ? (
-    <div className="border rounded-3xl w-full px-5 py-2">
-        <div className="bg-gray-800 rounded-2xl px-3 py-1 items-center flex justify-between">
+    <div className="border rounded-3xl w-full px-5 py-5">
+        <div className="bg-gray-800 rounded-2xl px-4 py-2 items-center flex justify-between">
             <h2 className="select-none text-4xl"><strong>GENRES</strong></h2>
         </div>
         <div>
-            <form onSubmit={handleGenres} className="flex justify-between gap-4 py-1 my-1 items-center">
-            <textarea name="genres" id="genres" className="bg-gray-600 px-2 py-1 rounded-lg w-full" defaultValue={profile.genres.join(", ")}></textarea>
+            <form onSubmit={handleGenres} className="flex justify-between gap-4 py-1 mt-5 my-1 items-center">
+            <textarea name="genres" id="genres" className="bg-gray-600 field-sizing-content px-2 py-1 rounded-lg w-full" defaultValue={profile.genres.join(", ")}></textarea>
             <button className="px-2 py-1 cursor-pointer bg-blue-700 rounded-3xl">{titleGenres}</button>
             </form>
         </div>

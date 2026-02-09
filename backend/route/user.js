@@ -3,167 +3,12 @@ const express = require("express");
 const { getToken } = require("../util/token");
 const { authenticate } = require("../middleware/auth");
 const { prisma } = require("../util/prisma");
-const { getCustomPlaylist } = require("../spotify/playlist");
+const { getCustomPlaylist,fetchAllTracksInPlaylist } = require("../spotify/playlist");
+const jwt = require("jsonwebtoken");
+
 const userRouter = express()
 
 userRouter.use("/",authenticate)
-
-userRouter.get("/ban/:artist",async(req,res)=>{
-    if(!req.params.artist){
-        res.status(400).json("Wrong artist!")
-        return
-    }
-    const artist = await prisma.artist.findFirst({
-        where:{spotifyId:req.params.artist}
-    })
-    if(!artist){
-        const artistData = await newAxios.get(`https://api.spotify.com/v1/artists/${req.params.artist}`,{
-            headers: {
-                Authorization: `Bearer ${myCache.get("spotify_access"+req.user.id)}`,
-            },
-        }).then(response=>{
-            return {id:response.data.id,name:response.data.name}
-        })
-        await prisma.user.update({
-            where:{id:Number.parseInt(req.user.id)},
-            data:{
-                bannedArtists: {
-                    create:[{
-                        artist:{
-                            create:{
-                                spotifyId:artistData.id,
-                                name:artistData.name
-                            }
-                        }
-                    }]
-                }
-            }
-        })
-    }else{
-        const isAlreadyConnected = (await prisma.IgnoredArtistsByUser.findMany({
-            where:{userId:Number.parseInt(req.user.id)}
-        })).map(many=>many.artistId).includes(artist.id)
-        if(!isAlreadyConnected){
-            await prisma.user.update({
-                where:{id:Number.parseInt(req.user.id)},
-                data:{
-                    bannedArtists: {
-                        create:[{
-                            artist:{
-                                connect:{
-                                    id:artist.id
-                                }
-                            }
-                        }]
-                    }
-                }
-            })
-        }
-    }
-    myCache.del("user_"+req.user.id)
-    res.json("Artist banned!")
-    
-})
-
-userRouter.post("/usedtracks",async(req,res)=>{
-    if(!req.body.tracks 
-      || !req.body.tracks.length 
-      || req.body.tracks.length < 1 
-      || !req.body.tracks.every(track=>typeof track == "string")
-      || !Array.isArray(req.body.tracks)){
-        res.status(400).json("Wrong tracks!")
-        return
-    }
-    for(const track of req.body.tracks){
-      const alreadytrack = await prisma.track.findFirst({
-        where:{spotifyId:track}
-      })
-      if(!alreadytrack){
-          const trackData = await newAxios.get(`https://api.spotify.com/v1/tracks/${track}`,{
-              headers: {
-                  Authorization: `Bearer ${myCache.get("spotify_access"+req.user.id)}`,
-              },
-          }).then(response=>{
-              return {id:response.data.id,name:response.data.name,artists:[{id:response.data.artists[0].id,name:response.data.artists[0].name}]}
-          })
-          let alreadyArtist = await prisma.artist.findFirst({
-              where:{spotifyId:trackData.artists[0].id}
-          })
-          if(!alreadyArtist){
-            alreadyArtist = await prisma.artist.create({
-                data:{
-                    spotifyId:trackData.artists[0].id,
-                    name:trackData.artists[0].name
-                }
-            })
-          }
-          await prisma.user.update({
-              where:{id:Number.parseInt(req.user.id)},
-              data:{
-                  usedTracks: {
-                      create:[{
-                          track:{
-                              create:{
-                                  spotifyId:trackData.id,
-                                  name:trackData.name,
-                                  artistId:alreadyArtist.id
-                              }
-                          }
-                      }]
-                  }
-              }
-          })
-      }else{
-          const isAlreadyConnected = (await prisma.UsedTracksByUser.findMany({
-              where:{userId:Number.parseInt(req.user.id)}
-          })).map(many=>many.trackId).includes(alreadytrack.id)
-          if(!isAlreadyConnected){
-              await prisma.user.update({
-                  where:{id:Number.parseInt(req.user.id)},
-                  data:{
-                      usedTracks: {
-                          create:[{
-                              track:{
-                                  connect:{
-                                      id:alreadytrack.id
-                                  }
-                              }
-                          }]
-                      }
-                  }
-              })
-          }
-      }
-    }
-    myCache.del("user_"+req.user.id)
-    res.json("Track used!")
-    
-})
-
-userRouter.get("/unban/:artist",async(req,res)=>{
-    if(!req.params.artist){
-        res.status(400).json("Wrong artist!")
-        return
-    }
-    const artist = await prisma.artist.findFirst({
-        where:{spotifyId:req.params.artist}
-    })
-    if(!artist){
-      res.status(400).json("Wrong artist!")
-      return
-    }
-    const isAlreadyConnected = (await prisma.IgnoredArtistsByUser.findMany({
-        where:{userId:Number.parseInt(req.user.id)}
-    })).map(many=>many.artistId).includes(artist.id)
-    if(isAlreadyConnected){
-      await prisma.IgnoredArtistsByUser.delete({
-        where: { userId_artistId: { artistId: artist.id, userId: Number.parseInt(req.user.id) }},
-      });
-    }
-    myCache.del("user_"+req.user.id)
-    res.json("Artist unbanned!")
-    
-})
 
 userRouter.patch("/genres",async(req,res)=>{
   if(!req.body.genres || req.body.genres.length < 1 || !Array.isArray(req.body.genres)){
@@ -176,6 +21,18 @@ userRouter.patch("/genres",async(req,res)=>{
       genres:req.body.genres.join(",")
     }
   })
+  const token = jwt.sign(
+    { id: req.user.id,refresh_token:req.user.refresh_token,playlist_id:req.user.playlist_id,genres:req.body.genres.join(","), spotify_id: req.user.spotify_id },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+  res.cookie('refreshToken', token, {
+    httpOnly: true,         // 🔐 Not accessible via JavaScript
+    secure: process.env.NODE_ENV == "production",//in production set to "true" 🔒 Only sent over HTTPS 
+    sameSite: 'strict',
+    path: '/',     // 🛡️ CSRF protection (or 'Lax' for less strict)
+    maxAge: 7 * 24  * 60 * 60 * 1000, // 🕒 1 hour
+  });
   myCache.del("user_"+req.user.id)
   res.json("Genres updated!")
 })
@@ -184,71 +41,81 @@ userRouter.get("/",async(req,res)=>{
   if(myCache.has("user_"+req.user.id)){
       return res.json(myCache.get("user_"+req.user.id))
   }
-  const userDB = await prisma.user.findFirst({where:{id:Number.parseInt(req.user.id)}})
-  const user = await newAxios.get("https://api.spotify.com/v1/me", {
-    headers: {
-      Authorization: `Bearer ${myCache.get("spotify_access"+req.user.id)}`,
-    },
-  }).then(response=>{
-    return response.data
-  });
-  if(userDB.name != user.display_name){
+  const spotifyToken = myCache.get("spotify_access"+req.user.id)
+  const [userDB, user] = await Promise.all([
+    prisma.user.findFirst({where:{id:Number.parseInt(req.user.id)}}),
+    newAxios.get("https://api.spotify.com/v1/me", {
+      headers: {
+        Authorization: `Bearer ${spotifyToken}`,
+      },
+    }).then(response => response.data).catch(() => "Error fetching user data")
+  ])
+  
+  if(user === "Error fetching user data"){
+    res.status(401).json("Error fetching user data")
+    return
+  }
+  
+  if(userDB.name !== user.display_name){
     await prisma.user.update({
       where : {id:Number.parseInt(req.user.id)},
-      data: {
-        name:user.display_name
-      }
+      data: {name:user.display_name}
     })
   }
 
-  const playlist = await getCustomPlaylist(req.user.spotify_id,myCache.get("spotify_access"+req.user.id),req.user.playlist_id)
-  const items = await newAxios.get(`https://api.spotify.com/v1/playlists/${req.user.playlist_id}/tracks?fields=next%2Citems%28track%28name%2Curi%2Cid%2Cartists%28name%2Cid%29%29%29&limit=50&offset=0`,{
-    headers: {
-      Authorization: `Bearer ${myCache.get("spotify_access"+req.user.id)}`,
-    },
-  }).then(async(response)=>{
-    let allItems = [...response.data.items]
-    let counter = 50
-    while(response.data.next){
-      response = await newAxios.get(`https://api.spotify.com/v1/playlists/${req.user.playlist_id}/tracks?fields=next%2Citems%28track%28name%2Curi%2Cid%2Cartists%28name%2Cid%29%29%29&limit=50&offset=${counter}`,{
-        
-        headers: {
-          Authorization: `Bearer ${myCache.get("spotify_access"+req.user.id)}`,
-        },})
-      allItems = [...allItems,...response.data.items]
-    }
-    return allItems
-  })
-  const Newitems = items.map(item=>{
-    return {
-      name:item.track.name,
-      id:item.track.id,
-      uri:item.track.uri,
-      artists:[
-        {
-          name:item.track.artists[0].name,
-          id:item.track.artists[0].id,
-        }
-      ]
-    }
-  })
-  const bannedArtists = await Promise.all((await prisma.IgnoredArtistsByUser.findMany({
-    where:{userId:Number.parseInt(req.user.id)}
-  })).map(async(many)=>{
-    const artist = await prisma.artist.findFirst({where:{id:many.artistId}})
-    return {id:artist.spotifyId,name:artist.name}
+  const [playlist, items] = await Promise.all([
+    getCustomPlaylist(req.user.spotify_id, spotifyToken, req.user.playlist_id),
+    fetchAllTracksInPlaylist(req.user.playlist_id, spotifyToken)
+  ])
+  if(playlist.id !== req.user.playlist_id){
+    await prisma.user.update({
+      where:{id:Number.parseInt(req.user.id)},
+      data:{playlistId:playlist.id}
+    })
+    const token = jwt.sign(
+      { id: userDB.id,refresh_token:req.user.refresh_token,playlist_id:playlist.id,genres:userDB.genres, spotify_id: userDB.spotify_id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    res.cookie('refreshToken', token, {
+        httpOnly: true,         // 🔐 Not accessible via JavaScript
+        secure: process.env.NODE_ENV == "production",//in production set to "true" 🔒 Only sent over HTTPS 
+        sameSite: 'strict',
+        path: '/',     // 🛡️ CSRF protection (or 'Lax' for less strict)
+        maxAge: 7 * 24  * 60 * 60 * 1000, // 🕒 1 hour
+    });
+  }
+  const Newitems = items.map(item=>({
+    name:item.track.name,
+    id:item.track.id,
+    uri:item.track.uri,
+    artists:[
+      {
+        name:item.track.artists[0].name,
+        id:item.track.artists[0].id,
+      }
+    ]
   }))
-  const usedTracks = await Promise.all((await prisma.UsedTracksByUser.findMany({
+  const bannedArtists = await prisma.artist.findMany({
+    where:{
+      ignoredBy:{
+        some:{userId:Number.parseInt(req.user.id)}
+      }
+    },
+    select:{spotifyId:true, name:true}
+  }).then(artists => artists.map(a => ({id:a.spotifyId, name:a.name})))
+  /*const usedTracks = await Promise.all((await prisma.UsedTracksByUser.findMany({
     where:{userId:Number.parseInt(req.user.id)}
   })).map(async(many)=>{
     const track = await prisma.track.findFirst({where:{id:many.trackId}})
     const artist = await prisma.artist.findFirst({where:{id:track.artistId}})
     return {id:track.spotifyId,name:track.name, artists:[{id:artist.spotifyId,name:artist.name}]}
-  }))
+  }))*/
   
-  const requestedUser = {name:user.display_name, ignoredArtists:bannedArtists,usedTracks, playlist:{id:playlist.id,name:playlist.name,items:Newitems}, id:req.user.spotify_id,genres:userDB.genres}
+  const requestedUser = {name:user.display_name, ignoredArtists:bannedArtists,/*usedTracks,*/ playlist:{id:playlist.id,name:playlist.name,items:Newitems}, id:req.user.spotify_id,genres:userDB.genres}
   myCache.set("user_"+req.user.id,requestedUser,5)
   res.json(requestedUser)
 })
+
 userRouter.use("/token",getToken);
 module.exports = {userRouter}

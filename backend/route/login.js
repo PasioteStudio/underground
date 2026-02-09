@@ -102,18 +102,7 @@ async function saveOrUpdateUser({res,access_token, refresh_token,expires_in}) {
     },
   });
   let userDB;
-  if (existingUser) {
-    const playlist_id = (await getCustomPlaylist(id,access_token,existingUser.playlistId)).id;
-    userDB = await prisma.user.update({
-      where: {
-        spotify_id: id,
-      },
-      data: {
-        name: display_name,
-        playlistId:playlist_id
-      },
-    });
-  } else {
+  if (!existingUser) {
     const playlist_id = (await getCustomPlaylist(id,access_token)).id;
     userDB = await prisma.user.create({
       data: {

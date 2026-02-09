@@ -31,6 +31,8 @@ model Artist {
   ignoredBy IgnoredArtistsByUser[]
   createdAt DateTime               @default(now())
   tracks    Track[]
+
+  @@index([name, spotifyId])
 }
 
 model Track {
@@ -41,6 +43,8 @@ model Track {
   artist    Artist             @relation(fields: [artistId], references: [id])
   artistId  Int
   createdAt DateTime           @default(now())
+
+  @@index([name, artistId, spotifyId])
 }
 
 model UsedTracksByUser {
@@ -51,6 +55,7 @@ model UsedTracksByUser {
   assignedAt DateTime @default(now())
 
   @@id([userId, trackId])
+  @@index([userId, trackId])
 }
 
 model IgnoredArtistsByUser {
@@ -61,4 +66,5 @@ model IgnoredArtistsByUser {
   assignedAt DateTime @default(now())
 
   @@id([userId, artistId])
+  @@index([userId, artistId])
 }
