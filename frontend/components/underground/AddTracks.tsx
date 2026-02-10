@@ -14,9 +14,10 @@ const AddTracks: React.FC = () => {
             update()
         }
         setTitle(response.message)
-        setTimeout(()=>{
-            if(title != "WAIT...")setTitle("ADD UNDERGROUND TRACKS")
+        const timeoutId = setTimeout(()=>{
+            setTitle("ADD UNDERGROUND TRACKS")
         },5000)
+        return () => clearTimeout(timeoutId)
     }
     return <button onClick={handleUnderground} className="mx-auto cursor-cell rounded-4xl bg-green-700 text-3xl px-5 py-2" >{title}</button>
 };
