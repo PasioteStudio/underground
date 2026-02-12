@@ -34,17 +34,7 @@ function doesTheTrackWorthIt(track:Track,items:Track[],to_be_added:Track[],artis
     return track.popularity == 0
 }
 
-async function addUnderground(artistsToIgnore:Artist[],genres:string[],playlist_id:string):Promise<{code:number,message:string}> {
-    const word = await axios.get("https://random-word-api.herokuapp.com/word?number=1",{timeout:5000}).then(response=>response.data[0]).catch(async (err)=>{
-        const word2 = await axios.get("https://random-words-api.kushcreates.com/api?language=en&words=1",{timeout:5000}).then(response=>{
-            console.log(response.data)
-            return response.data[0].word
-        }).catch(err=>{
-            return {code:401,message:"Error fetching random word"}
-        })
-        if(typeof word2 == "object") return word2
-    })
-    if(typeof word == "object") return word
+async function addUnderground(word:string,artistsToIgnore:Artist[],genres:string[],playlist_id:string):Promise<{code:number,message:string}> {
     const items = await spotifyAxios.get(`https://api.spotify.com/v1/playlists/${playlist_id}/tracks?fields=items%28track%28id%2Cname%2Cartists%28name%29%29%29&limit=50&offset=0`).then(response=>{
         return response.data.items.map((item:{track:Track})=>{
             return item.track

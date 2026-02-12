@@ -17,7 +17,7 @@ tracksRouter.post("/worth",async(req,res)=>{
         where:{spotifyId:{in:req.body.tracks}}
     }).then(async(tracks)=>{
         for(const track of tracks){
-            const alreadyUsed = await prisma.UsedTracksByUser.findFirst({
+            const alreadyUsed = await prisma.UsedTracksByUser.findUnique({
                 where:{trackId:track.id,userId:Number.parseInt(req.user.id)}
             })
             if(alreadyUsed){
@@ -35,7 +35,7 @@ tracksRouter.get("/ban/:artist",async(req,res)=>{
         res.status(400).json("Wrong artist!")
         return
     }
-    const artist = await prisma.artist.findFirst({
+    const artist = await prisma.artist.findUnique({
         where:{spotifyId:req.params.artist}
     })
     if(!artist){
@@ -97,7 +97,7 @@ tracksRouter.post("/usedtracks",async(req,res)=>{
         return
     }
     for(const track of req.body.tracks){
-      const alreadytrack = await prisma.track.findFirst({
+      const alreadytrack = await prisma.track.findUnique({
         where:{spotifyId:track}
       })
       if(!alreadytrack){
@@ -108,7 +108,7 @@ tracksRouter.post("/usedtracks",async(req,res)=>{
           }).then(response=>{
               return {id:response.data.id,name:response.data.name,artists:[{id:response.data.artists[0].id,name:response.data.artists[0].name}]}
           })
-          let alreadyArtist = await prisma.artist.findFirst({
+          let alreadyArtist = await prisma.artist.findUnique({
               where:{spotifyId:trackData.artists[0].id}
           })
           if(!alreadyArtist){
@@ -167,7 +167,7 @@ tracksRouter.get("/unban/:artist",async(req,res)=>{
         res.status(400).json("Wrong artist!")
         return
     }
-    const artist = await prisma.artist.findFirst({
+    const artist = await prisma.artist.findUnique({
         where:{spotifyId:req.params.artist}
     })
     if(!artist){

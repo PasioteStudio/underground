@@ -43,7 +43,7 @@ userRouter.get("/",async(req,res)=>{
   }
   const spotifyToken = myCache.get("spotify_access"+req.user.id)
   const [userDB, user] = await Promise.all([
-    prisma.user.findFirst({where:{id:Number.parseInt(req.user.id)}}),
+    prisma.user.findUnique({where:{id:Number.parseInt(req.user.id)}}),
     newAxios.get("https://api.spotify.com/v1/me", {
       headers: {
         Authorization: `Bearer ${spotifyToken}`,

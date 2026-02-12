@@ -72,16 +72,15 @@ authRouter.get("/callback",async(req,res)=>{
 
       const headers = { 'content-type': 'application/x-www-form-urlencoded' };
       headers['Authorization'] = 'Basic ' + Buffer.from(process.env.Client_ID + ':' + process.env.Client_Secret).toString('base64');
-
       const response = await axios.post("https://accounts.spotify.com/api/token", params.toString(), { headers });
       const access_token = response.data.access_token,
-            refresh_token = response.data.refresh_token;
+        refresh_token = response.data.refresh_token;
       myCache.del("code_verifier"+state)
       await saveOrUpdateUser({res,access_token, refresh_token,expires_in:response.data.expires_in});
     } catch (error) {
       console.error("Error fetching tokens (authorization_code):", error.response ? error.response.status : '', error.response ? error.response.data : error.message);
       myCache.del("code_verifier"+state)
-      res.redirect('/#' +
+      res.redirect(process.env.FRONTEND_URL + '/#' +
           new URLSearchParams({
               error: 'token_fetch_failed'
           }).toString()
@@ -96,13 +95,12 @@ async function saveOrUpdateUser({res,access_token, refresh_token,expires_in}) {
     },
   });
   const { id, display_name } = user.data;
-  const existingUser = await prisma.user.findUnique({
+  let userDB = await prisma.user.findUnique({
     where: {
       spotify_id: id,
     },
   });
-  let userDB;
-  if (!existingUser) {
+  if (!userDB) {
     const playlist_id = (await getCustomPlaylist(id,access_token)).id;
     userDB = await prisma.user.create({
       data: {
