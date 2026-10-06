@@ -37,7 +37,7 @@ authRouter.get("/login",async(req,res)=>{
     res.cookie('state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV == "production",
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/',
       maxAge: 5 * 60 * 1000,
     });
@@ -53,7 +53,7 @@ authRouter.get("/login",async(req,res)=>{
       }).toString()
     );
 })
-authRouter.get("/callback",async(req,res)=>{
+authRouter.get("/auth",async(req,res)=>{
     const code = req.query.code || null;
     const state = req.cookies.state || null;
     const codeVerifier = myCache.get("code_verifier"+state);

@@ -4,12 +4,22 @@
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
+const databaseUser = encodeURIComponent(env("DATABASE_USER"));
+const databasePassword = encodeURIComponent(env("DATABASE_PASSWORD"));
+const databaseHost = env("DATABASE_HOST");
+const databasePort = Number(env("DATABASE_PORT"));
+const databaseName = encodeURIComponent(env("DATABASE_NAME"));
+
+if (!Number.isInteger(databasePort) || databasePort < 1 || databasePort > 65535) {
+  throw new Error("DATABASE_PORT must be an integer between 1 and 65535");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: `mysql://${env("DATABASE_USER")}:${env("DATABASE_PASSWORD")}@${env("DATABASE_HOST")}:${env("DATABASE_PORT")}/${env("DATABASE_NAME")}`,
+    url: `mysql://${databaseUser}:${databasePassword}@${databaseHost}:${databasePort}/${databaseName}`,
   },
 });

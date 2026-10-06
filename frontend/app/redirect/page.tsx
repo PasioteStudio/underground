@@ -26,7 +26,7 @@ const Redirect: React.FC = () => {
         }
         const code = URL_Patterns.searchParams.get('code');
         if(code){
-            window.location.href = process.env.NEXT_PUBLIC_API_URL + "/callback?" + new URLSearchParams({
+            window.location.href = process.env.NEXT_PUBLIC_API_URL + "/auth?" + new URLSearchParams({
                 code: code,
             });
             return

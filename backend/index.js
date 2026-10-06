@@ -5,6 +5,7 @@ const { authRouter } = require("./route/login");
 const { userRouter } = require("./route/user");
 const { testRouter } = require("./route/test");
 const { tracksRouter } = require("./route/tracks");
+const { connectDatabase } = require("./util/prisma");
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
@@ -21,7 +22,7 @@ app.use(cookieParser());
 app.use(cors({
     origin: [process.env.FRONTEND_URL],
     credentials:true,
-    exposedHeaders: ['Set-Cookie']
+    exposedHeaders: ['Set-Cookie',"state"]
 }))
 
 // Rate limiters for auth-sensitive endpoints
@@ -51,6 +52,11 @@ app.use((err, req, res, next) => {
   }
 });
 
-app.listen(PORT, () => {
+connectDatabase().then(() => {
+  app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+  });
+}).catch((err) => {
+  console.error("Database startup check failed:", err);
+  process.exit(1);
 });
